@@ -9,9 +9,12 @@ extern crate log;
 
 use clap::{ArgMatches,
            Shell};
+use configopt::{ConfigOpt,
+                Error as ConfigOptError};
 use futures::stream::StreamExt;
 use hab::{cli::{self,
                 gateway_util,
+                hab::Hab,
                 parse_optional_arg},
           command::{self,
                     pkg::{download::{PackageSet,
@@ -67,7 +70,8 @@ use habitat_sup_protocol::{self as sup_proto,
                            ctl::ServiceBindList,
                            net::ErrCode,
                            types::*};
-use std::{env,
+use std::{convert::TryFrom,
+          env,
           ffi::OsString,
           fs::File,
           io::{self,
@@ -139,6 +143,12 @@ async fn start(ui: &mut UI, feature_flags: FeatureFlag) -> Result<()> {
     let (args, remaining_args) = raw_parse_args();
     debug!("clap cli args: {:?}", &args);
     debug!("remaining cli args: {:?}", &remaining_args);
+
+    match Hab::try_from_args_with_configopt() {
+        Ok(Hab::Svc(cli::hab::svc::Svc::Update(u))) => return sub_svc_update(u).await,
+        Err(e @ ConfigOptError::ConfigGenerated(_)) => e.exit(),
+        _ => {}
+    }
 
     // We build the command tree in a separate thread to eliminate
     // possible stack overflow crashes at runtime. OSX, for instance,
@@ -1219,6 +1229,12 @@ async fn sub_svc_unload(m: &ArgMatches<'_>) -> Result<()> {
                                           timeout_in_seconds };
     let remote_sup_addr = remote_sup_from_input(m)?;
     gateway_util::send(&remote_sup_addr, msg).await
+}
+
+async fn sub_svc_update(u: hab::cli::hab::svc::Update) -> Result<()> {
+    let ctl_addr = u.remote_sup.to_listen_ctl_addr();
+    let msg: sup_proto::ctl::SvcUpdate = TryFrom::try_from(u)?;
+    gateway_util::send(&ctl_addr, msg).await
 }
 
 async fn sub_svc_start(m: &ArgMatches<'_>) -> Result<()> {

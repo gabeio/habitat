@@ -60,7 +60,7 @@ pub struct CacheKeyPath {
 pub struct PkgIdent {
     /// A package identifier (ex: core/redis, core/busybox-static/1.42.2)
     #[structopt(name = "PKG_IDENT")]
-    pkg_ident: PackageIdent,
+    pub pkg_ident: PackageIdent,
 }
 
 #[derive(ConfigOpt, StructOpt)]

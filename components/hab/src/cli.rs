@@ -3,6 +3,7 @@ pub mod hab;
 
 use crate::{cli::hab::{sup::{Sup,
                              SupRun},
+                       svc::Update as SvcUpdate,
                        util::CACHE_KEY_PATH_DEFAULT,
                        Hab},
             command::studio};
@@ -854,6 +855,7 @@ pub fn get(feature_flags: FeatureFlag) -> App<'static, 'static> {
                 )
             )
             (subcommand: sub_svc_load().aliases(&["l", "lo", "loa"]))
+            (subcommand: SvcUpdate::clap())
             (subcommand: sub_svc_start().aliases(&["star"]))
             (subcommand: sub_svc_status().aliases(&["stat", "statu"]))
             (subcommand: sub_svc_stop().aliases(&["sto"]))

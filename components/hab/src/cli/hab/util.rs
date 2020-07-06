@@ -1,6 +1,7 @@
 use crate::cli::valid_fully_qualified_ident;
 use configopt::{self,
                 ConfigOpt};
+use habitat_common::types::ListenCtlAddr;
 use habitat_core::{crypto::CACHE_KEY_PATH_ENV_VAR,
                    fs as hab_core_fs,
                    package::PackageIdent};
@@ -78,6 +79,15 @@ pub struct RemoteSup {
     /// Address to a remote Supervisor's Control Gateway [default: 127.0.0.1:9632]
     #[structopt(name = "REMOTE_SUP", long = "remote-sup", short = "r")]
     remote_sup: Option<SocketAddr>,
+}
+
+impl RemoteSup {
+    pub fn to_listen_ctl_addr(&self) -> ListenCtlAddr {
+        self.remote_sup
+            .clone()
+            .expect("Should always have a value because a default is specified")
+            .into()
+    }
 }
 
 pub fn socket_addr_with_default_port<S: AsRef<str>>(addr: S,

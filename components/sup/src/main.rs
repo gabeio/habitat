@@ -792,7 +792,6 @@ gpoVMSncu2jMIDZX63IkQII=
             assert_eq!(sup_proto::ctl::SvcLoad { ident:                   None,
                                                  application_environment: None,
                                                  binds:                   None,
-                                                 specified_binds:         None,
                                                  binding_mode:            Some(1),
                                                  bldr_url:
                                                      Some(String::from("https://bldr.habitat.sh")),
@@ -1051,7 +1050,6 @@ gpoVMSncu2jMIDZX63IkQII=
             assert_eq!(sup_proto::ctl::SvcLoad { ident:                   None,
                                                  application_environment: None,
                                                  binds:                   Some(binds),
-                                                 specified_binds:         None,
                                                  binding_mode:            Some(0),
                                                  bldr_url:
                                                      Some(String::from("http://my_url.com/")),
@@ -1439,7 +1437,6 @@ pkg_ident_or_artifact = "core/redis"
             assert_eq!(sup_proto::ctl::SvcLoad { ident:                   None,
                                                  application_environment: None,
                                                  binds:                   Some(binds),
-                                                 specified_binds:         None,
                                                  binding_mode:            Some(0),
                                                  bldr_url:
                                                      Some(String::from("http://my_url.com/")),

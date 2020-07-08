@@ -198,6 +198,10 @@ impl From<core::service::HealthCheckInterval> for HealthCheckInterval {
     fn from(h: core::service::HealthCheckInterval) -> Self { Self { seconds: h.into() } }
 }
 
+impl From<u64> for HealthCheckInterval {
+    fn from(i: u64) -> Self { Self { seconds: i } }
+}
+
 impl From<package::PackageIdent> for PackageIdent {
     fn from(ident: package::PackageIdent) -> Self {
         Self { origin:  ident.origin,

@@ -9,9 +9,7 @@ use crate::error::{Error,
 use configopt::ConfigOpt;
 use habitat_core::{os::process::ShutdownTimeout,
                    package::PackageIdent,
-                   service::{BindingMode,
-                             HealthCheckInterval,
-                             ServiceBind,
+                   service::{ServiceBind,
                              ServiceGroup},
                    ChannelIdent};
 use habitat_sup_protocol::{ctl,
@@ -101,7 +99,7 @@ lazy_static::lazy_static! {
 }
 
 #[derive(ConfigOpt, StructOpt, Deserialize)]
-#[configopt(attrs(serde))]
+#[configopt(attrs(serde), derive(Serialize))]
 #[serde(deny_unknown_fields)]
 #[structopt(no_version, rename_all = "screamingsnake")]
 #[allow(dead_code)]
@@ -210,90 +208,17 @@ pub struct Load {
 /// service. Depending on the given changes, they may be able to
 /// be applied without restarting the service.
 #[derive(ConfigOpt, StructOpt, Deserialize)]
-#[configopt(attrs(serde))]
-#[serde(deny_unknown_fields)]
 #[structopt(name = "update", no_version, rename_all = "screamingsnake")]
-#[allow(dead_code)]
 pub struct Update {
     #[structopt(flatten)]
     #[serde(flatten)]
-    pkg_ident: PkgIdent,
-
+    pkg_ident:       PkgIdent,
     #[structopt(flatten)]
     #[serde(flatten)]
-    pub remote_sup: RemoteSup,
-
-    // This is some unfortunate duplication... everything below this
-    // should basically be identical to SharedLoad, except that we
-    // don't want to have default values, and everything should be
-    // optional.
-    /// Receive updates from the specified release channel
-    #[structopt(long = "channel")]
-    pub channel: Option<ChannelIdent>,
-
-    /// Specify an alternate Builder endpoint.
-    #[structopt(name = "BLDR_URL", short = "u", long = "url")]
-    pub bldr_url: Option<Url>,
-
-    /// The service group with shared config and topology
-    #[structopt(long = "group")]
-    pub group: Option<String>,
-
-    /// Service topology
-    #[structopt(long = "topology",
-                short = "t",
-                possible_values = &["standalone", "leader"])]
-    pub topology: Option<habitat_sup_protocol::types::Topology>,
-
-    /// The update strategy
-    #[structopt(long = "strategy",
-                short = "s",
-                possible_values = &["none", "at-once", "rolling"])]
-    pub strategy: Option<habitat_sup_protocol::types::UpdateStrategy>,
-
-    /// The condition dictating when this service should update
-    ///
-    /// latest: Runs the latest package that can be found in the configured channel and local
-    /// packages.
-    ///
-    /// track-channel: Always run what is at the head of a given channel. This enables service
-    /// rollback where demoting a package from a channel will cause the package to rollback to
-    /// an older version of the package. A ramification of enabling this condition is packages
-    /// newer than the package at the head of the channel will be automatically uninstalled
-    /// during a service rollback.
-    #[structopt(long = "update-condition",
-                possible_values = UpdateCondition::VARIANTS)]
-    pub update_condition: Option<UpdateCondition>,
-
-    /// One or more service groups to bind to a configuration
-    #[structopt(long = "bind")]
-    #[serde(default)]
-    pub bind: Option<Vec<ServiceBind>>,
-
-    /// Governs how the presence or absence of binds affects service startup
-    ///
-    /// strict: blocks startup until all binds are present.
-    #[structopt(long = "binding-mode",
-                possible_values = &["strict", "relaxed"])]
-    pub binding_mode: Option<BindingMode>,
-
-    /// The interval in seconds on which to run health checks
-    // We can use `HealthCheckInterval` here (cf. `SharedLoad` above),
-    // because we don't have to worry about serialization here.
-    #[structopt(long = "health-check-interval", short = "i")]
-    pub health_check_interval: Option<HealthCheckInterval>,
-
-    /// The delay in seconds after sending the shutdown signal to wait before killing the service
-    /// process
-    ///
-    /// The default value can be set in the packages plan file.
-    #[structopt(long = "shutdown-timeout")]
-    pub shutdown_timeout: Option<ShutdownTimeout>,
-
-    /// Password of the service user
-    #[cfg(target_os = "windows")]
-    #[structopt(long = "password")]
-    pub password: Option<String>,
+    pub remote_sup:  RemoteSup,
+    #[structopt(flatten)]
+    #[configopt(nowrap)]
+    pub shared_load: ConfigOptSharedLoad,
 }
 
 impl TryFrom<Update> for ctl::SvcUpdate {
@@ -305,9 +230,10 @@ impl TryFrom<Update> for ctl::SvcUpdate {
         msg.ident = Some(From::from(u.pkg_ident.pkg_ident));
         // We are explicitly *not* using the environment variable as a
         // fallback.
+        let u = u.shared_load;
         msg.bldr_url = u.bldr_url.map(|u| u.to_string());
         msg.bldr_channel = u.channel.map(Into::into);
-        msg.binds = u.bind.map(FromIterator::from_iter);
+        msg.binds = Some(FromIterator::from_iter(u.bind));
         msg.group = u.group;
         msg.health_check_interval = u.health_check_interval.map(From::from);
         msg.binding_mode = u.binding_mode.map(|v| v as i32);

@@ -1,8 +1,10 @@
-use crate::{api_client::{BuilderAPIClient,
-                         Client},
+use crate::{api_client::{self,
+                         retry_builder_api,
+                         BuilderAPIClient,
+                         Client,
+                         API_RETRIES,
+                         API_RETRY_WAIT},
             common::{self,
-                     command::package::install::{RETRIES,
-                                                 RETRY_WAIT},
                      ui::{Status,
                           UIWriter,
                           UI}},
@@ -11,7 +13,7 @@ use crate::{api_client::{BuilderAPIClient,
             hcore::crypto::SigKeyPair,
             PRODUCT,
             VERSION};
-use retry::delay;
+use reqwest::StatusCode;
 use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
@@ -122,22 +124,29 @@ pub async fn download_public_encryption_key(ui: &mut UI,
                                             token: &str,
                                             cache: &Path)
                                             -> Result<()> {
-    retry::retry_future!(delay::Fixed::from(RETRY_WAIT).take(RETRIES), async {
-        ui.status(Status::Downloading, "latest public encryption key")?;
-        let key_path =
-            api_client.fetch_origin_public_encryption_key(name, token, cache, ui.progress())
-                      .await?;
-        ui.status(Status::Cached,
-                  key_path.file_name().unwrap().to_str().unwrap() /* lol */)?;
-        Ok::<_, Error>(())
-    }).await
-      .map_err(|_| {
-          Error::from(common::error::Error::DownloadFailed(format!("We tried {} times but could \
-                                                                    not download the latest \
-                                                                    public encryption key. \
-                                                                    Giving up.",
-                                                                   RETRIES,)))
-      })
+    if let Err(e) =
+        retry_builder_api!(None, async {
+            ui.status(Status::Downloading, "latest public encryption key")?;
+            let key_path =
+                api_client.fetch_origin_public_encryption_key(name, token, cache, ui.progress())
+                          .await?;
+            ui.status(Status::Cached,
+                      key_path.file_name().unwrap().to_str().unwrap() /* lol */)?;
+            Ok::<_, habitat_api_client::error::Error>(())
+        }).await
+    {
+        return Err(common::error::Error::DownloadFailed(format!("When suitable, we try once \
+                                                                 then re-attempt {} times \
+                                                                 with a back-off algorithm. \
+                                                                 Unfortunately, it seems we \
+                                                                 still could not download the \
+                                                                 latest encryption key. (Some \
+                                                                 HTTP error conditions are \
+                                                                 not practically worth \
+                                                                 retrying) - last error: {}.",
+                                                                API_RETRIES, e)).into());
+    }
+    Ok(())
 }
 
 async fn download_secret_key(ui: &mut UI,
@@ -146,21 +155,28 @@ async fn download_secret_key(ui: &mut UI,
                              token: &str,
                              cache: &Path)
                              -> Result<()> {
-    retry::retry_future!(delay::Fixed::from(RETRY_WAIT).take(RETRIES), async {
-        ui.status(Status::Downloading, "latest secret key")?;
-        let key_path = api_client.fetch_secret_origin_key(name, token, cache, ui.progress())
-                                 .await?;
-        ui.status(Status::Cached,
-                  key_path.file_name().unwrap().to_str().unwrap() /* lol */)?;
-        Ok::<_, Error>(())
-    }).await
-      .map_err(|_| {
-          Error::from(common::error::Error::DownloadFailed(format!("We tried {} times but could \
-                                                                    not download the latest \
-                                                                    secret origin key. Giving \
-                                                                    up.",
-                                                                   RETRIES,)))
-      })
+    if let Err(e) = retry_builder_api!(None, async {
+                        ui.status(Status::Downloading, "latest secret key")?;
+                        let key_path =
+                            api_client.fetch_secret_origin_key(name, token, cache, ui.progress())
+                                      .await?;
+                        ui.status(Status::Cached,
+                                  key_path.file_name().unwrap().to_str().unwrap() /* lol */)?;
+                        Ok::<_, habitat_api_client::error::Error>(())
+                    }).await
+    {
+        return Err(common::error::Error::DownloadFailed(format!("When suitable, we try once \
+                                                                 then re-attempt {} times \
+                                                                 with a back-off algorithm. \
+                                                                 Unfortunately, it seems we \
+                                                                 still could not download the \
+                                                                 latest secret origin key. \
+                                                                 (Some HTTP error conditions \
+                                                                 are not practically worth \
+                                                                 retrying) - last error: {}.",
+                                                                API_RETRIES, e)).into());
+    }
+    Ok(())
 }
 
 async fn download_key(ui: &mut UI,
@@ -175,19 +191,26 @@ async fn download_key(ui: &mut UI,
         ui.status(Status::Using, &format!("{} in {}", nwr, cache.display()))?;
         Ok(())
     } else {
-        retry::retry_future!(delay::Fixed::from(RETRY_WAIT).take(RETRIES), async {
-            ui.status(Status::Downloading, &nwr)?;
-            api_client.fetch_origin_key(name, rev, token, cache, ui.progress())
-                      .await?;
-            ui.status(Status::Cached, &format!("{} to {}", nwr, cache.display()))?;
-            Ok::<_, Error>(())
-        }).await
-          .map_err(|_| {
-              Error::from(common::error::Error::DownloadFailed(format!("We tried {} times but \
-                                                                        could not download \
-                                                                        {}/{} origin key. \
-                                                                        Giving up.",
-                                                                       RETRIES, &name, &rev)))
-          })
+        if let Err(e) = retry_builder_api!(None, async {
+                            ui.status(Status::Downloading, &nwr)?;
+                            api_client.fetch_origin_key(name, rev, token, cache, ui.progress())
+                                      .await?;
+                            ui.status(Status::Cached, &format!("{} to {}", nwr, cache.display()))?;
+                            Ok::<_, habitat_api_client::error::Error>(())
+                        }).await
+        {
+            return Err(common::error::Error::DownloadFailed(format!("When suitable, we try once \
+                                                                     then re-attempt {} times \
+                                                                     with a back-off algorithm. \
+                                                                     Unfortunately, it seems we \
+                                                                     still could not download the \
+                                                                     {}/{} origin key. (Some \
+                                                                     HTTP error conditions are \
+                                                                     not practically worth \
+                                                                     retrying) - last error: {}.",
+                                                                     API_RETRIES, &name, &rev,
+                                                                     e)).into());
+        }
+        Ok(())
     }
 }

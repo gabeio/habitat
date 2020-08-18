@@ -4,7 +4,8 @@ use crate::{api_client::{self,
                          Client,
                          API_RETRIES,
                          API_RETRY_WAIT},
-            common::{self,
+            common::{error::{APIFailure,
+                             Error as CommonError},
                      ui::{Status,
                           UIWriter,
                           UI}},
@@ -135,16 +136,7 @@ pub async fn download_public_encryption_key(ui: &mut UI,
             Ok::<_, habitat_api_client::error::Error>(())
         }).await
     {
-        return Err(common::error::Error::DownloadFailed(format!("When suitable, we try once \
-                                                                 then re-attempt {} times \
-                                                                 with a back-off algorithm. \
-                                                                 Unfortunately, it seems we \
-                                                                 still could not download the \
-                                                                 latest encryption key. (Some \
-                                                                 HTTP error conditions are \
-                                                                 not practically worth \
-                                                                 retrying) - last error: {}.",
-                                                                API_RETRIES, e)).into());
+        return Err(CommonError::BuilderAPITransferError(APIFailure::latest_key_download_failed(API_RETRIES, &name, e.into())).into());
     }
     Ok(())
 }
@@ -165,16 +157,7 @@ async fn download_secret_key(ui: &mut UI,
                         Ok::<_, habitat_api_client::error::Error>(())
                     }).await
     {
-        return Err(common::error::Error::DownloadFailed(format!("When suitable, we try once \
-                                                                 then re-attempt {} times \
-                                                                 with a back-off algorithm. \
-                                                                 Unfortunately, it seems we \
-                                                                 still could not download the \
-                                                                 latest secret origin key. \
-                                                                 (Some HTTP error conditions \
-                                                                 are not practically worth \
-                                                                 retrying) - last error: {}.",
-                                                                API_RETRIES, e)).into());
+        return Err(CommonError::BuilderAPITransferError(APIFailure::latest_key_download_failed(API_RETRIES, &name, e.into())).into());
     }
     Ok(())
 }
@@ -199,17 +182,7 @@ async fn download_key(ui: &mut UI,
                             Ok::<_, habitat_api_client::error::Error>(())
                         }).await
         {
-            return Err(common::error::Error::DownloadFailed(format!("When suitable, we try once \
-                                                                     then re-attempt {} times \
-                                                                     with a back-off algorithm. \
-                                                                     Unfortunately, it seems we \
-                                                                     still could not download the \
-                                                                     {}/{} origin key. (Some \
-                                                                     HTTP error conditions are \
-                                                                     not practically worth \
-                                                                     retrying) - last error: {}.",
-                                                                     API_RETRIES, &name, &rev,
-                                                                     e)).into());
+            return Err(CommonError::BuilderAPITransferError(APIFailure::key_download_failed(API_RETRIES, &name, &rev, e.into())).into());
         }
         Ok(())
     }

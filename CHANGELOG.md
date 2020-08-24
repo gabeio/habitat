@@ -7,8 +7,13 @@
 - Fix text in e2e test [#7883](https://github.com/habitat-sh/habitat/pull/7883) ([davidMcneil](https://github.com/davidMcneil))
 <!-- latest_release -->
 
-<!-- release_rollup since=1.6.115 -->
-### Changes since 1.6.115 release
+<!-- release_rollup since=1.6.139 -->
+### Changes since 1.6.139 release
+<!-- release_rollup -->
+
+<!-- latest_stable_release 1.6.139 -->
+## [1.6.139](https://github.com/habitat-sh/habitat/tree/1.6.139) (2020-08-24)
+[Full Changelog](https://github.com/habitat-sh/habitat/compare/1.6.115..1.6.139)
 
 #### New Features & Enhancements
 - Add `hab sup restart` command [#7878](https://github.com/habitat-sh/habitat/pull/7878) ([davidMcneil](https://github.com/davidMcneil)) <!-- 1.6.134 -->
@@ -38,9 +43,8 @@
 - Update Changelog for 1.6.115 [#7864](https://github.com/habitat-sh/habitat/pull/7864) ([christophermaier](https://github.com/christophermaier)) <!-- 1.6.119 -->
 - make bind timeout configurable and add debug output around startup [#7858](https://github.com/habitat-sh/habitat/pull/7858) ([mwrock](https://github.com/mwrock)) <!-- 1.6.117 -->
 - Cleanup `hab pkg export` subcommand [#7857](https://github.com/habitat-sh/habitat/pull/7857) ([davidMcneil](https://github.com/davidMcneil)) <!-- 1.6.116 -->
-<!-- release_rollup -->
-
 <!-- latest_stable_release -->
+
 ## [1.6.115](https://github.com/habitat-sh/habitat/tree/1.6.115) (2020-08-10)
 [Full Changelog](https://github.com/habitat-sh/habitat/compare/1.6.56..1.6.115)
 
